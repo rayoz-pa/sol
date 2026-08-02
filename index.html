@@ -318,45 +318,6 @@ startBtn.addEventListener("click", () => {
   }
 });
 
-// --- Disparo automático de rutinas por horario (la página queda abierta todo el día) ---
-
-const HORARIOS_RUTINA = {
-  manana: { hora: 9, minuto: 30 },
-  mediodia: { hora: 14, minuto: 0 },
-  cierre: { hora: 22, minuto: 0 },
-};
-
-let ultimaRutinaDisparada = null; // evita disparar la misma rutina más de una vez en el mismo minuto/día
-
-function claveDeHoy(momentoClave) {
-  const hoy = new Date().toLocaleDateString("en-CA");
-  return `${hoy}_${momentoClave}`;
-}
-
-function verificarHorarioRutina() {
-  if (conversacionIniciada) return; // no interrumpe una conversación en curso
-
-  const ahora = new Date();
-  const horaActual = ahora.getHours();
-  const minutoActual = ahora.getMinutes();
-
-  for (const [momentoClave, { hora, minuto }] of Object.entries(HORARIOS_RUTINA)) {
-    if (horaActual === hora && minutoActual === minuto) {
-      const clave = claveDeHoy(momentoClave);
-      if (ultimaRutinaDisparada === clave) continue; // ya se disparó este momento hoy
-      ultimaRutinaDisparada = clave;
-
-      momento = momentoClave;
-      momentoDiv.textContent = "Momento: " + momento;
-      detenerEscuchaWake();
-      iniciarConversacion();
-    }
-  }
-}
-
-// Revisa cada 20 segundos si es hora de alguna rutina
-setInterval(verificarHorarioRutina, 20000);
-
 // --- Scheduler interno de rutinas ---
 // Como la página se deja abierta todo el día, no hace falta reabrir Chrome
 // a cada horario — solo revisamos el reloj y disparamos la conversación sola.
