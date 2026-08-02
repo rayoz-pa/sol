@@ -276,8 +276,17 @@ function iniciarEscuchaWake() {
     }
   };
 
-  wakeRecognition.onerror = () => {
+  wakeRecognition.onerror = (event) => {
     escuchandoWake = false;
+    if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+      statusDiv.textContent = "Necesito permiso de micrófono para escuchar 'Sol'. Revisa el ícono de micrófono en la barra de direcciones.";
+      return; // no reintentar si el problema es de permisos
+    }
+    // Errores comunes y esperables (ej. "no-speech" tras un rato de silencio) —
+    // simplemente reiniciamos la escucha, sin interrumpir nada.
+    if (!conversacionIniciada) {
+      iniciarEscuchaWake();
+    }
   };
 
   wakeRecognition.start();
