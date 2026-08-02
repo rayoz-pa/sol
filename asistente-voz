@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Asistente de Voz - Rayo</title>
+<style>
+  body {
+    font-family: -apple-system, sans-serif;
+    background: #1a1a2e;
+    color: #eaeaea;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    margin: 0;
+  }
+  button {
+    background: #6c5ce7;
+    color: white;
+    border: none;
+    padding: 24px 48px;
+    font-size: 20px;
+    border-radius: 50px;
+    cursor: pointer;
+  }
+  button:disabled { background: #444; }
+  #status { margin-top: 30px; font-size: 16px; opacity: 0.8; max-width: 500px; text-align: center; }
+  #momento { margin-top: 10px; font-size: 13px; opacity: 0.5; text-transform: uppercase; letter-spacing: 1px; }
+</style>
+</head>
+<body>
+
+<button id="startBtn">Hablemos</button>
+<div id="status">Presiona el botón para comenzar</div>
+<div id="momento"></div>
+
+<script>
+// URL real de tu Worker
+const WORKER_URL = "https://bitter-boat-7e89.rayo-pizarroa.workers.dev/";
+
+// La clave ya NO vive escrita en el código.
+// Se pide una sola vez (por navegador/dispositivo) y queda guardada en localStorage.
+// Debe coincidir con el secreto CLAVE_COMPARTIDA que configuraste en Cloudflare
+// (wrangler secret put CLAVE_COMPARTIDA).
+function obtenerClave() {
+  let clave = localStorage.getItem("rayo_clave_acceso");
+  if (!clave) {
+    clave = prompt("Ingresa tu clave de acceso (solo se pide una vez en este navegador):");
+    if (clave) {
+      clave = clave.trim();
+      localStorage.setItem("rayo_clave_acceso", clave);
+    }
+  }
+  return clave;
+}
+const CLAVE_COMPARTIDA = obtenerClave();
+
+// Voz fija elegida: Google español
+const NOMBRE_VOZ = "Google español";
+let vozSeleccionada = null;
+
+function cargarVoz() {
+  const voces = speechSynthesis.getVoices();
+  vozSeleccionada = voces.find(v => v.name === NOMBRE_VOZ) || null;
+}
+speechSynthesis.onvoiceschanged = cargarVoz;
+cargarVoz();
+
+const startBtn = document.getElementById("startBtn");
+const statusDiv = document.getElementById("status");
+const momentoDiv = document.getElementById("momento");
+
+let conversationHistory = [];
+let conversacionIniciada = false;
+
+function detectarMomento() {
+  const hora = new Date().getHours();
+  if (hora >= 6 && hora < 11) return "manana";
+  if (hora >= 11 && hora < 15) return "mediodia";
+  if (hora >= 15 && hora < 20) return "tarde";
+  return "cierre";
+}
+
+let momento = detectarMomento();
+const saludosPorMomento = {
+  manana: "Buen día, Rayo. ¿Cómo dormiste y cómo despertaste?",
+  mediodia: "Hola Rayo, ¿tomaste tus vitaminas, hiciste ejercicio o meditaste hoy?",
+  tarde: "Hola Rayo, ¿en qué proyectos trabajaste hoy y cómo te sientes?",
+  cierre: "Buenas noches, Rayo. ¿Cómo terminas el día?",
+};
+
+momentoDiv.textContent = "Momento: " + momento;
+
+function hablar(texto, callback) {
+  const utterance = new SpeechSynthesisUtterance(texto);
+  if (vozSeleccionada) {
+    utterance.voice = vozSeleccionada;
+    utterance.lang = vozSeleccionada.lang;
+  } else {
+    utterance.lang = "es-ES";
+  }
+  utterance.onend = callback;
+  speechSynthesis.speak(utterance);
+}
+
+function separarRespuesta(textoCompleto) {
+  const marcador = "DATOS_JSON:";
+  const idx = textoCompleto.indexOf(marcador);
+  if (idx === -1) {
+    return { textoHablado: textoCompleto, datosJson: null };
+  }
+  const textoHablado = textoCompleto.slice(0, idx).trim();
+  const jsonTexto = textoCompleto.slice(idx + marcador.length).trim();
+  let datosJson = null;
+  try {
+    datosJson = JSON.parse(jsonTexto);
+  } catch (e) {
+    console.log("No se pudo parsear DATOS_JSON:", jsonTexto);
+  }
+  return { textoHablado, datosJson };
+}
+
+function escuchar() {
+  const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+  recognition.lang = "es-ES";
+  recognition.continuous = true;
+  recognition.interimResults = true;
+
+  let transcriptFinal = "";
+  let silencioTimer = null;
+  const TIEMPO_SILENCIO_MS = 2500; // espera ~2.5s de silencio real antes de considerar que terminaste de hablar
+
+  statusDiv.textContent = "Escuchando...";
+
+  function reiniciarTimerSilencio() {
+    if (silencioTimer) clearTimeout(silencioTimer);
+    silencioTimer = setTimeout(() => {
+      recognition.stop();
+    }, TIEMPO_SILENCIO_MS);
+  }
+
+  recognition.onresult = (event) => {
+    let interim = "";
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const texto = event.results[i][0].transcript;
+      if (event.results[i].isFinal) {
+        transcriptFinal += texto + " ";
+      } else {
+        interim += texto;
+      }
+    }
+    statusDiv.textContent = 'Escuchando: "' + (transcriptFinal + interim).trim() + '"';
+    reiniciarTimerSilencio();
+  };
+
+  recognition.onend = () => {
+    if (silencioTimer) clearTimeout(silencioTimer);
+    const textoCompleto = transcriptFinal.trim();
+    if (textoCompleto) {
+      statusDiv.textContent = 'Dijiste: "' + textoCompleto + '"';
+      enviarAClaude(textoCompleto);
+    } else {
+      // No se detectó nada útil, sigue escuchando sin pedir clic
+      escuchar();
+    }
+  };
+
+  recognition.onerror = (event) => {
+    if (silencioTimer) clearTimeout(silencioTimer);
+    statusDiv.textContent = "Error escuchando: " + event.error;
+    startBtn.disabled = false;
+    startBtn.textContent = "Responder";
+  };
+
+  recognition.start();
+  reiniciarTimerSilencio();
+}
+
+async function enviarAClaude(texto) {
+  statusDiv.textContent = "Pensando...";
+
+  const response = await fetch(WORKER_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Rayo-Key": CLAVE_COMPARTIDA,
+    },
+    body: JSON.stringify({
+      userText: texto,
+      conversationHistory: conversationHistory,
+      momento: momento,
+    }),
+  });
+
+  const data = await response.json();
+
+  if (data.error) {
+    console.log("Error del Worker:", data.error);
+    statusDiv.textContent = "Error: " + data.error;
+    startBtn.disabled = false;
+    startBtn.textContent = "Responder";
+    return;
+  }
+
+  const { textoHablado, datosJson } = separarRespuesta(data.reply);
+
+  if (data.cambiarMomentoA) {
+    momento = data.cambiarMomentoA;
+    momentoDiv.textContent = "Momento: " + momento;
+  }
+
+  conversationHistory = data.messages;
+  conversationHistory.push({ role: "assistant", content: data.reply });
+
+  if (data.conversacionTerminada) {
+    console.log("Conversación cerrada. Guardado en Notion:", data.guardadoEnNotion);
+  }
+
+  statusDiv.textContent = textoHablado;
+  hablar(textoHablado, () => {
+    if (data.conversacionTerminada) {
+      // Conversación cerrada (con o sin datos guardados) — vuelve a estado de reposo, requiere clic para la próxima
+      startBtn.disabled = false;
+      startBtn.textContent = "Nueva conversación";
+      conversationHistory = [];
+      conversacionIniciada = false;
+    } else {
+      // Conversación sigue — escucha automáticamente, sin necesitar clic
+      escuchar();
+    }
+  });
+}
+
+startBtn.addEventListener("click", () => {
+  startBtn.disabled = true;
+
+  if (!conversacionIniciada) {
+    const saludo = saludosPorMomento[momento];
+    statusDiv.textContent = saludo;
+    conversacionIniciada = true;
+    hablar(saludo, () => {
+      escuchar();
+    });
+  } else {
+    escuchar();
+  }
+});
+</script>
+
+</body>
+</html>
