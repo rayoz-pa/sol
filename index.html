@@ -309,6 +309,78 @@ startBtn.addEventListener("click", () => {
   }
 });
 
+// --- Disparo automático de rutinas por horario (la página queda abierta todo el día) ---
+
+const HORARIOS_RUTINA = {
+  manana: { hora: 9, minuto: 30 },
+  mediodia: { hora: 14, minuto: 0 },
+  cierre: { hora: 22, minuto: 0 },
+};
+
+let ultimaRutinaDisparada = null; // evita disparar la misma rutina más de una vez en el mismo minuto/día
+
+function claveDeHoy(momentoClave) {
+  const hoy = new Date().toLocaleDateString("en-CA");
+  return `${hoy}_${momentoClave}`;
+}
+
+function verificarHorarioRutina() {
+  if (conversacionIniciada) return; // no interrumpe una conversación en curso
+
+  const ahora = new Date();
+  const horaActual = ahora.getHours();
+  const minutoActual = ahora.getMinutes();
+
+  for (const [momentoClave, { hora, minuto }] of Object.entries(HORARIOS_RUTINA)) {
+    if (horaActual === hora && minutoActual === minuto) {
+      const clave = claveDeHoy(momentoClave);
+      if (ultimaRutinaDisparada === clave) continue; // ya se disparó este momento hoy
+      ultimaRutinaDisparada = clave;
+
+      momento = momentoClave;
+      momentoDiv.textContent = "Momento: " + momento;
+      detenerEscuchaWake();
+      iniciarConversacion();
+    }
+  }
+}
+
+// Revisa cada 20 segundos si es hora de alguna rutina
+setInterval(verificarHorarioRutina, 20000);
+
+// --- Scheduler interno de rutinas ---
+// Como la página se deja abierta todo el día, no hace falta reabrir Chrome
+// a cada horario — solo revisamos el reloj y disparamos la conversación sola.
+const HORARIOS_RUTINA = [
+  { hora: 9, minuto: 45, momento: "manana" },
+  { hora: 14, minuto: 0, momento: "mediodia" },
+  { hora: 22, minuto: 0, momento: "cierre" },
+];
+let ultimaRutinaDisparada = null; // ej. "2026-08-02_manana", evita disparar dos veces el mismo momento el mismo día
+
+function revisarHorarioRutinas() {
+  if (conversacionIniciada) return; // no interrumpir si ya hay una conversación en curso
+
+  const ahora = new Date();
+  const fechaHoy = ahora.toLocaleDateString("en-CA");
+
+  for (const r of HORARIOS_RUTINA) {
+    if (ahora.getHours() === r.hora && ahora.getMinutes() === r.minuto) {
+      const clave = `${fechaHoy}_${r.momento}`;
+      if (ultimaRutinaDisparada === clave) continue; // ya se disparó este momento hoy
+
+      ultimaRutinaDisparada = clave;
+      momento = r.momento;
+      momentoDiv.textContent = "Momento: " + momento;
+      detenerEscuchaWake();
+      iniciarConversacion();
+      break;
+    }
+  }
+}
+
+setInterval(revisarHorarioRutinas, 20000); // revisa cada 20 segundos
+
 // Arranca la escucha pasiva de la palabra clave apenas carga la página
 iniciarEscuchaWake();
 </script>
