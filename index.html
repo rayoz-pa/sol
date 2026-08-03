@@ -119,17 +119,14 @@ function separarRespuesta(textoCompleto) {
   return { textoHablado, datosJson };
 }
 
-// Frases de detención — se revisan ANTES que la palabra de activación "sol",
-// para que decir "sol detente" nunca dispare una conversación nueva por error.
-const FRASES_DETENER = [
-  "detén la escucha", "detente sol", "sol detente", "sol detén",
-  "pausa la escucha", "sol pausa", "sol para", "para sol",
-  "deja de escuchar", "sol deja de escuchar",
-  "desactiva la escucha", "sol desactiva", "sol silencio", "silencio sol",
-];
+// Detección flexible: basta con decir "sol" junto con cualquier raíz de detención,
+// sin importar la conjugación exacta (detente, detenerte, deténte, etc.)
+const RAICES_DETENER = ["deten", "pausa", "desactiv", "silencio", "deja de escuchar"];
 
 function esFraseDeDetencion(textoLower) {
-  return FRASES_DETENER.some(frase => textoLower.includes(frase));
+  const contieneSol = textoLower.includes("sol");
+  const contieneRaizDeDetencion = RAICES_DETENER.some(raiz => textoLower.includes(raiz));
+  return contieneSol && contieneRaizDeDetencion;
 }
 
 function escuchar() {
