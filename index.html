@@ -215,20 +215,36 @@ function escuchar() {
 async function enviarAClaude(texto) {
   statusDiv.textContent = "Pensando...";
 
-  const response = await fetch(WORKER_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Rayo-Key": CLAVE_COMPARTIDA,
-    },
-    body: JSON.stringify({
-      userText: texto,
-      conversationHistory: conversationHistory,
-      momento: momento,
-    }),
-  });
+  let data;
+  try {
+    const response = await fetch(WORKER_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Rayo-Key": CLAVE_COMPARTIDA,
+      },
+      body: JSON.stringify({
+        userText: texto,
+        conversationHistory: conversationHistory,
+        momento: momento,
+      }),
+    });
 
-  const data = await response.json();
+    if (!response.ok) {
+      throw new Error("El servidor respondió con estado " + response.status);
+    }
+
+    data = await response.json();
+  } catch (err) {
+    console.log("Error de red al hablar con el Worker:", err);
+    statusDiv.textContent = "Hubo un problema de conexión. Presiona el botón para reintentar.";
+    startBtn.disabled = false;
+    startBtn.textContent = "Reintentar";
+    conversationHistory = [];
+    conversacionIniciada = false;
+    iniciarEscuchaWake();
+    return;
+  }
 
   if (data.error) {
     console.log("Error del Worker:", data.error);
