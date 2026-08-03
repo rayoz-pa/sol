@@ -299,7 +299,7 @@ function iniciarEscuchaWake() {
 
     if (textoLower.includes("sol")) {
       detenerEscuchaWake();
-      iniciarConversacion();
+      iniciarConversacion("wake");
     }
   };
 
@@ -341,11 +341,12 @@ function detenerEscuchaWake() {
   escuchandoWake = false;
 }
 
-function iniciarConversacion() {
+function iniciarConversacion(origen) {
   startBtn.disabled = true;
   conversacionIniciada = true;
   statusDiv.textContent = "Conectando...";
-  enviarAClaude("(inicio de conversación)");
+  const disparador = origen === "rutina" ? "(inicio por rutina programada)" : "(inicio por palabra clave)";
+  enviarAClaude(disparador);
 }
 
 let sesionActiva = false;
@@ -362,7 +363,7 @@ startBtn.addEventListener("click", () => {
   }
   if (!conversacionIniciada) {
     detenerEscuchaWake();
-    iniciarConversacion();
+    iniciarConversacion("wake");
   } else {
     startBtn.disabled = true;
     escuchar();
@@ -394,7 +395,7 @@ function revisarHorarioRutinas() {
       momento = r.momento;
       momentoDiv.textContent = "Momento: " + momento;
       detenerEscuchaWake();
-      iniciarConversacion();
+      iniciarConversacion("rutina");
       break;
     }
   }
