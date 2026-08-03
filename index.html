@@ -257,12 +257,18 @@ function iniciarEscuchaWake() {
   wakeRecognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
   wakeRecognition.lang = "es-ES";
   wakeRecognition.continuous = true;
-  wakeRecognition.interimResults = false;
+  wakeRecognition.interimResults = true; // para diagnosticar y reaccionar más rápido
   escuchandoWake = true;
 
   wakeRecognition.onresult = (event) => {
-    const ultimo = event.results[event.results.length - 1][0].transcript.toLowerCase();
-    if (ultimo.includes("sol")) {
+    let textoCompleto = "";
+    for (let i = 0; i < event.results.length; i++) {
+      textoCompleto += event.results[i][0].transcript + " ";
+    }
+    const textoLower = textoCompleto.toLowerCase();
+    statusDiv.textContent = 'Escuchando fondo: "' + textoCompleto.trim() + '"';
+
+    if (textoLower.includes("sol")) {
       detenerEscuchaWake();
       iniciarConversacion();
     }
@@ -278,9 +284,14 @@ function iniciarEscuchaWake() {
 
   wakeRecognition.onerror = (event) => {
     escuchandoWake = false;
+    console.log("Error en escucha pasiva:", event.error);
     if (event.error === "not-allowed" || event.error === "service-not-allowed") {
       statusDiv.textContent = "Necesito permiso de micrófono para escuchar 'Sol'. Revisa el ícono de micrófono en la barra de direcciones.";
       return; // no reintentar si el problema es de permisos
+    }
+    if (event.error !== "no-speech" && event.error !== "aborted") {
+      // Muestra brevemente cualquier error inesperado antes de reintentar
+      statusDiv.textContent = "Error de escucha (" + event.error + "), reintentando...";
     }
     // Errores comunes y esperables (ej. "no-speech" tras un rato de silencio) —
     // simplemente reiniciamos la escucha, sin interrumpir nada.
