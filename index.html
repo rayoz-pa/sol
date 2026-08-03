@@ -31,7 +31,8 @@
 </head>
 <body>
 
-<button id="startBtn">Hablemos</button>
+<button id="startBtn">Activar Sol</button>
+<button id="stopBtn" style="background: #444; padding: 12px 28px; font-size: 14px; margin-top: 12px;">Silenciar a Sol</button>
 <div id="status">Presiona el botón para comenzar</div>
 <div id="momento"></div>
 
@@ -68,8 +69,10 @@ speechSynthesis.onvoiceschanged = cargarVoz;
 cargarVoz();
 
 const startBtn = document.getElementById("startBtn");
+const stopBtn = document.getElementById("stopBtn");
 const statusDiv = document.getElementById("status");
 const momentoDiv = document.getElementById("momento");
+let recognitionActivo = null; // referencia al reconocimiento en curso (conversación activa), para poder detenerlo desde fuera
 
 let conversationHistory = [];
 let conversacionIniciada = false;
@@ -134,6 +137,7 @@ function escuchar() {
   recognition.lang = "es-ES";
   recognition.continuous = true;
   recognition.interimResults = true;
+  recognitionActivo = recognition;
 
   let transcriptFinal = "";
   let silencioTimer = null;
@@ -183,12 +187,7 @@ function escuchar() {
     const textoNormalizado = textoCompleto.toLowerCase();
 
     if (esFraseDeDetencion(textoNormalizado)) {
-      statusDiv.textContent = "Escucha detenida.";
-      startBtn.disabled = false;
-      startBtn.textContent = "Reanudar";
-      conversationHistory = [];
-      conversacionIniciada = false;
-      iniciarEscuchaWake();
+      detenerTodoPorRayo();
       return; // corta el ciclo sin llamar a Claude
     }
 
@@ -307,8 +306,7 @@ function iniciarEscuchaWake() {
     statusDiv.textContent = 'Escuchando fondo: "' + textoCompleto.trim() + '"';
 
     if (esFraseDeDetencion(textoLower)) {
-      // Ya estamos en reposo — solo confirmamos, sin iniciar nada
-      statusDiv.textContent = "Ya en pausa. Di \"Sol\" cuando quieras hablar.";
+      detenerTodoPorRayo();
       return;
     }
 
@@ -356,14 +354,45 @@ function detenerEscuchaWake() {
   escuchandoWake = false;
 }
 
+function yaSaludoHoy() {
+  const hoy = new Date().toLocaleDateString("en-CA");
+  return localStorage.getItem("rayo_saludo_fecha") === hoy;
+}
+function marcarSaludoHoy() {
+  const hoy = new Date().toLocaleDateString("en-CA");
+  localStorage.setItem("rayo_saludo_fecha", hoy);
+}
+
 function iniciarConversacion(origen) {
   if (conversacionIniciada) return; // ya hay una conversación en curso, ignora disparos duplicados
   startBtn.disabled = true;
   conversacionIniciada = true;
   statusDiv.textContent = "Conectando...";
-  const disparador = origen === "rutina" ? "(inicio por rutina programada)" : "(inicio por palabra clave)";
+  const yaSaludado = yaSaludoHoy();
+  const tipo = origen === "rutina" ? "rutina programada" : "palabra clave";
+  const disparador = `(inicio por ${tipo}, ${yaSaludado ? "ya conversamos hoy" : "primera vez hoy"})`;
+  marcarSaludoHoy();
   enviarAClaude(disparador);
 }
+
+function detenerTodoPorRayo() {
+  if (recognitionActivo) {
+    recognitionActivo.onend = null;
+    recognitionActivo.onresult = null;
+    try { recognitionActivo.abort(); } catch (e) {}
+    recognitionActivo = null;
+  }
+  detenerEscuchaWake();
+  speechSynthesis.cancel();
+  conversationHistory = [];
+  conversacionIniciada = false;
+  sesionActiva = false;
+  startBtn.disabled = false;
+  startBtn.textContent = "Activar Sol";
+  statusDiv.textContent = 'Sol está en pausa. Presiona "Activar Sol" cuando quieras retomar.';
+}
+
+stopBtn.addEventListener("click", detenerTodoPorRayo);
 
 let sesionActiva = false;
 
