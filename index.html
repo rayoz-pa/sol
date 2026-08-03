@@ -119,6 +119,19 @@ function separarRespuesta(textoCompleto) {
   return { textoHablado, datosJson };
 }
 
+// Frases de detención — se revisan ANTES que la palabra de activación "sol",
+// para que decir "sol detente" nunca dispare una conversación nueva por error.
+const FRASES_DETENER = [
+  "detén la escucha", "detente sol", "sol detente", "sol detén",
+  "pausa la escucha", "sol pausa", "sol para", "para sol",
+  "deja de escuchar", "sol deja de escuchar",
+  "desactiva la escucha", "sol desactiva", "sol silencio", "silencio sol",
+];
+
+function esFraseDeDetencion(textoLower) {
+  return FRASES_DETENER.some(frase => textoLower.includes(frase));
+}
+
 function escuchar() {
   const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
   recognition.lang = "es-ES";
@@ -127,7 +140,10 @@ function escuchar() {
 
   let transcriptFinal = "";
   let silencioTimer = null;
+  let topeMaximoTimer = null;
+  let ultimaLongitudTexto = 0;
   const TIEMPO_SILENCIO_MS = 2000; // espera ~2s de silencio real antes de considerar que terminaste de hablar
+  const TOPE_MAXIMO_MS = 15000; // red de seguridad: nunca escucha más de 15s seguidos, pase lo que pase
 
   statusDiv.textContent = "Escuchando...";
 
@@ -137,6 +153,10 @@ function escuchar() {
       recognition.stop();
     }, TIEMPO_SILENCIO_MS);
   }
+
+  topeMaximoTimer = setTimeout(() => {
+    recognition.stop();
+  }, TOPE_MAXIMO_MS);
 
   recognition.onresult = (event) => {
     let interim = "";
@@ -148,21 +168,24 @@ function escuchar() {
         interim += texto;
       }
     }
-    statusDiv.textContent = 'Escuchando: "' + (transcriptFinal + interim).trim() + '"';
-    reiniciarTimerSilencio();
+    const textoActual = (transcriptFinal + interim).trim();
+    statusDiv.textContent = 'Escuchando: "' + textoActual + '"';
+
+    // Solo reinicia el temporizador si de verdad llegó contenido nuevo,
+    // no ante cualquier evento vacío o repetido que mande el navegador.
+    if (textoActual.length > ultimaLongitudTexto) {
+      ultimaLongitudTexto = textoActual.length;
+      reiniciarTimerSilencio();
+    }
   };
 
   recognition.onend = () => {
     if (silencioTimer) clearTimeout(silencioTimer);
+    if (topeMaximoTimer) clearTimeout(topeMaximoTimer);
     const textoCompleto = transcriptFinal.trim();
-
-    // Palabras de corte: se detectan localmente, ANTES de llamar a Claude.
-    // No gastan tokens y no mandan el audio/texto a ningún lado.
-    const FRASES_DETENER = ["detén la escucha", "detente sol", "sol detente", "pausa la escucha", "deja de escuchar"];
     const textoNormalizado = textoCompleto.toLowerCase();
-    const debeDetenerse = FRASES_DETENER.some(frase => textoNormalizado.includes(frase));
 
-    if (debeDetenerse) {
+    if (esFraseDeDetencion(textoNormalizado)) {
       statusDiv.textContent = "Escucha detenida.";
       startBtn.disabled = false;
       startBtn.textContent = "Reanudar";
@@ -268,6 +291,12 @@ function iniciarEscuchaWake() {
     const textoLower = textoCompleto.toLowerCase();
     statusDiv.textContent = 'Escuchando fondo: "' + textoCompleto.trim() + '"';
 
+    if (esFraseDeDetencion(textoLower)) {
+      // Ya estamos en reposo — solo confirmamos, sin iniciar nada
+      statusDiv.textContent = "Ya en pausa. Di \"Sol\" cuando quieras hablar.";
+      return;
+    }
+
     if (textoLower.includes("sol")) {
       detenerEscuchaWake();
       iniciarConversacion();
@@ -319,7 +348,18 @@ function iniciarConversacion() {
   enviarAClaude("(inicio de conversación)");
 }
 
+let sesionActiva = false;
+
+startBtn.textContent = "Activar Sol";
+statusDiv.textContent = 'Presiona el botón una vez para activar a Sol por hoy';
+
 startBtn.addEventListener("click", () => {
+  if (!sesionActiva) {
+    sesionActiva = true;
+    startBtn.textContent = "Hablar ahora";
+    iniciarEscuchaWake();
+    return;
+  }
   if (!conversacionIniciada) {
     detenerEscuchaWake();
     iniciarConversacion();
@@ -361,9 +401,6 @@ function revisarHorarioRutinas() {
 }
 
 setInterval(revisarHorarioRutinas, 20000); // revisa cada 20 segundos
-
-// Arranca la escucha pasiva de la palabra clave apenas carga la página
-iniciarEscuchaWake();
 </script>
 
 </body>
