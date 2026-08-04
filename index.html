@@ -336,7 +336,7 @@ function escuchar() {
   let silencioTimer = null;
   let topeMaximoTimer = null;
   let ultimaLongitudTexto = 0;
-  const TIEMPO_SILENCIO_MS = 2000; // espera ~2s de silencio real antes de considerar que terminaste de hablar
+  const TIEMPO_SILENCIO_MS = 1200; // espera ~1.2s de silencio real antes de considerar que terminaste de hablar (bajado de 2000ms — más responsivo, algo más de riesgo de cortar si haces una pausa larga a mitad de frase)
   const TOPE_MAXIMO_MS = 15000; // red de seguridad: nunca escucha más de 15s seguidos, pase lo que pase
 
   statusDiv.textContent = "Escuchando...";
