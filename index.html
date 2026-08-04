@@ -12,8 +12,57 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    height: 100vh;
+    min-height: 100vh;
     margin: 0;
+    transition: background 3s ease;
+  }
+  body.despejado-dia { background: linear-gradient(160deg, #1a2a4a, #2d4a6b); }
+  body.despejado-noche { background: linear-gradient(160deg, #0d0d1f, #1a1a2e); }
+  body.nublado-dia { background: linear-gradient(160deg, #232838, #3a3f4f); }
+  body.nublado-noche { background: linear-gradient(160deg, #16161f, #2a2a35); }
+  body.lluvia-dia { background: linear-gradient(160deg, #1a2530, #2f3f4a); }
+  body.lluvia-noche { background: linear-gradient(160deg, #0f1420, #1c2735); }
+  body.niebla-dia { background: linear-gradient(160deg, #22222c, #3a3a44); }
+  body.niebla-noche { background: linear-gradient(160deg, #14141c, #262630); }
+  #chatBox, #maitinadaBox {
+    margin-top: 24px;
+    width: 90%;
+    max-width: 500px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  #chatBox label, #maitinadaBox label {
+    font-size: 12px;
+    opacity: 0.7;
+  }
+  #chatBox textarea, #maitinadaBox textarea {
+    width: 100%;
+    min-height: 80px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 12px;
+    color: #eaeaea;
+    padding: 12px;
+    font-size: 14px;
+    box-sizing: border-box;
+    resize: vertical;
+  }
+  #chatBox button, #maitinadaBox button {
+    padding: 10px 20px;
+    font-size: 14px;
+    align-self: flex-end;
+  }
+  #maitinadaBox {
+    margin-top: 30px;
+    opacity: 0.75;
+  }
+  #stopBtn {
+    background: #333;
+    padding: 8px 18px;
+    font-size: 12px;
+    opacity: 0.6;
+    margin-top: 30px;
   }
   button {
     background: #6c5ce7;
@@ -157,9 +206,9 @@
 
 <style>
 svg {
-  --c-main: #FEA041;
+  --c-main: #D3B3F7;
   --c-shade: #AB501A;
-  --c-face: #FEBC7A;
+  --c-face: #FFFADA;
   --c-line: #3E2816;
   --c-highlight: #FEFEFE;
 }
@@ -215,9 +264,22 @@ svg.estado-enfoque {
 </svg>
 
 <button id="startBtn">Activar Sol</button>
-<button id="stopBtn" style="background: #444; padding: 12px 28px; font-size: 14px; margin-top: 12px;">Silenciar a Sol</button>
 <div id="status">Presiona el botón para comenzar</div>
 <div id="momento"></div>
+
+<div id="chatBox">
+  <label>Escríbele a Sol (cualquier cosa — un pendiente, cómo va tu energía, lo que sea)</label>
+  <textarea id="chatInput" placeholder="Ej: tengo que revisar el inventario de Casa Lunae el martes — o — mi energía en la tarde está como en 3"></textarea>
+  <button id="chatEnviarBtn">Enviar mensaje</button>
+</div>
+
+<div id="maitinadaBox">
+  <label>Envío directo a Maitinada (solo Evento o Colaborador — formato exacto, sin pasar por Sol)</label>
+  <textarea id="textoDirecto" placeholder="Sigue el formato exacto de Maitinada Tasks Bot"></textarea>
+  <button id="enviarTextoBtn">Enviar</button>
+</div>
+
+<button id="stopBtn">Silenciar a Sol</button>
 
 <script>
 // URL real de tu Worker
@@ -336,7 +398,7 @@ function escuchar() {
   let silencioTimer = null;
   let topeMaximoTimer = null;
   let ultimaLongitudTexto = 0;
-  const TIEMPO_SILENCIO_MS = 1200; // espera ~1.2s de silencio real antes de considerar que terminaste de hablar (bajado de 2000ms — más responsivo, algo más de riesgo de cortar si haces una pausa larga a mitad de frase)
+  const TIEMPO_SILENCIO_MS = 1600; // punto medio entre 2000ms (muy lento) y 1200ms (cortaba de más) — ajustar de nuevo si sigue sin sentirse bien
   const TOPE_MAXIMO_MS = 15000; // red de seguridad: nunca escucha más de 15s seguidos, pase lo que pase
 
   statusDiv.textContent = "Escuchando...";
@@ -404,7 +466,7 @@ function escuchar() {
   reiniciarTimerSilencio();
 }
 
-async function enviarAClaude(texto) {
+async function enviarAClaude(texto, continuarConVoz = true) {
   statusDiv.textContent = "Pensando...";
 
   let data;
@@ -471,8 +533,13 @@ async function enviarAClaude(texto) {
       conversacionIniciada = false;
       iniciarEscuchaWake();
     } else {
-      // Conversación sigue — escucha automáticamente, sin necesitar clic
-      escuchar();
+      // Conversación sigue — si vino por voz, sigue escuchando sola.
+      // Si vino escrita, espera el próximo mensaje escrito en vez de activar el micrófono.
+      if (continuarConVoz) {
+        escuchar();
+      } else {
+        statusDiv.textContent = textoHablado + " (escribe tu respuesta abajo)";
+      }
     }
   });
 }
@@ -586,6 +653,93 @@ function detenerTodoPorRayo() {
 }
 
 stopBtn.addEventListener("click", detenerTodoPorRayo);
+
+// --- Fondo dinámico según clima real de Buin + hora del día ---
+async function actualizarFondoClima() {
+  try {
+    const url = "https://api.open-meteo.com/v1/forecast?latitude=-33.7333&longitude=-70.75&current=weathercode,is_day&timezone=America%2FSantiago";
+    const resp = await fetch(url);
+    const data = await resp.json();
+    const codigo = data.current?.weathercode ?? 0;
+    const esDia = data.current?.is_day === 1;
+
+    let categoria;
+    if (codigo <= 1) categoria = "despejado";
+    else if (codigo <= 3) categoria = "nublado";
+    else if (codigo <= 48) categoria = "niebla";
+    else categoria = "lluvia";
+
+    const clase = categoria + (esDia ? "-dia" : "-noche");
+    document.body.className = document.body.className
+      .split(" ")
+      .filter(c => !c.includes("-dia") && !c.includes("-noche"))
+      .concat(clase)
+      .join(" ")
+      .trim();
+  } catch (err) {
+    console.log("No se pudo actualizar el fondo por clima:", err);
+  }
+}
+actualizarFondoClima();
+setInterval(actualizarFondoClima, 20 * 60 * 1000); // cada 20 minutos
+
+// --- "Escríbele a Sol" — texto libre, misma conversación que la voz ---
+const chatInput = document.getElementById("chatInput");
+const chatEnviarBtn = document.getElementById("chatEnviarBtn");
+
+chatEnviarBtn.addEventListener("click", async () => {
+  const texto = chatInput.value.trim();
+  if (!texto) return;
+  chatInput.value = "";
+  chatEnviarBtn.disabled = true;
+  await enviarAClaude(texto, false); // false = no activar el micrófono al terminar, esperar texto de nuevo
+  chatEnviarBtn.disabled = false;
+});
+
+chatInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    chatEnviarBtn.click();
+  }
+});
+
+// --- Envío directo a Maitinada (solo Evento/Colaborador — formato exacto, sin Claude) ---
+const textoDirectoInput = document.getElementById("textoDirecto");
+const enviarTextoBtn = document.getElementById("enviarTextoBtn");
+
+enviarTextoBtn.addEventListener("click", async () => {
+  const texto = textoDirectoInput.value.trim();
+  if (!texto) return;
+
+  enviarTextoBtn.disabled = true;
+  enviarTextoBtn.textContent = "Enviando...";
+
+  try {
+    const response = await fetch(WORKER_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Rayo-Key": CLAVE_COMPARTIDA,
+      },
+      body: JSON.stringify({ textoDirecto: texto }),
+    });
+    const data = await response.json();
+    if (data.enviado) {
+      textoDirectoInput.value = "";
+      enviarTextoBtn.textContent = "¡Enviado!";
+    } else {
+      enviarTextoBtn.textContent = "Error — reintenta";
+    }
+  } catch (err) {
+    console.log("Error enviando texto directo:", err);
+    enviarTextoBtn.textContent = "Error de conexión";
+  }
+
+  setTimeout(() => {
+    enviarTextoBtn.disabled = false;
+    enviarTextoBtn.textContent = "Enviar";
+  }, 2000);
+});
 
 let sesionActiva = false;
 
