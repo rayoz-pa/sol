@@ -9,12 +9,65 @@
     background: #1a1a2e;
     color: #eaeaea;
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+    flex-direction: row;
+    align-items: stretch;
     min-height: 100vh;
     margin: 0;
     transition: background 3s ease;
+  }
+  #contenidoPrincipal {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  #panelLateral {
+    width: 220px;
+    flex-shrink: 0;
+    padding: 20px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    background: rgba(0,0,0,0.15);
+    box-sizing: border-box;
+  }
+  #panelLateral .titulo-seccion {
+    font-size: 11px;
+    color: #a99fc2;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  #panelLateral .barra-item {
+    background: rgba(255,255,255,0.06);
+    border-radius: 8px;
+    padding: 8px 10px;
+    margin-bottom: 8px;
+  }
+  #panelLateral .barra-fila {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+  }
+  #panelLateral .barra-fondo {
+    height: 5px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 3px;
+    margin-top: 5px;
+  }
+  #panelLateral .barra-relleno {
+    height: 100%;
+    border-radius: 3px;
+    background: #6c5ce7;
+    transition: width 0.6s ease;
+  }
+  #panelLateral .colaborador-fila {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    padding: 2px 0;
   }
   body.despejado-noche-fria { background: linear-gradient(160deg, #0e0549 0%, #4a62b6 65%, #212221 100%); }
   body.despejado-noche-calida { background: linear-gradient(160deg, #21174B 0%, #CC54D0 65%, #4A42AE 100%); }
@@ -44,6 +97,43 @@
     font-size: 12px;
     opacity: 0.7;
   }
+  #momento, #climaDebug { display: none; }
+  .icon-btn {
+    position: fixed;
+    right: 16px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    opacity: 0.85;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+  }
+  .icon-btn:hover { opacity: 1; }
+  .icon-btn svg { width: 20px; height: 20px; }
+  #startBtn.icon-btn { top: 16px; background: #6c5ce7; }
+  #stopBtn.icon-btn { top: 68px; background: #444; opacity: 0.6; }
+  #startBtn.escuchando { animation: pulso 1.5s ease-in-out infinite; }
+  @keyframes pulso {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(108,92,231,0.5); }
+    50% { box-shadow: 0 0 0 10px rgba(108,92,231,0); }
+  }
+  .icon-send-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    align-self: flex-end;
+  }
+  .icon-send-btn svg { width: 18px; height: 18px; }
+  #enviarTextoBtn.icon-send-btn { background: transparent; border: 1px solid rgba(255,255,255,0.3); }
+  #enviarTextoBtn.icon-send-btn img { width: 26px; height: 26px; opacity: 0.85; }
   #chatBox textarea, #maitinadaBox textarea {
     width: 100%;
     min-height: 80px;
@@ -87,6 +177,26 @@
 </style>
 </head>
 <body>
+
+<div id="panelLateral">
+  <div>
+    <div class="titulo-seccion">Rutina de hoy</div>
+    <div class="barra-item">
+      <div class="barra-fila"><span>Registro diario</span><span id="rutinaPorcentaje">—</span></div>
+      <div class="barra-fondo"><div class="barra-relleno" id="rutinaBarra" style="width:0%;"></div></div>
+    </div>
+  </div>
+  <div>
+    <div class="titulo-seccion">Tareas activas por proyecto</div>
+    <div id="proyectosBarras"></div>
+  </div>
+  <div>
+    <div class="titulo-seccion">Carga del equipo</div>
+    <div id="colaboradoresLista"></div>
+  </div>
+</div>
+
+<div id="contenidoPrincipal">
 
 <svg id="sol-character" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
 	 viewBox="0 0 612 792" enable-background="new 0 0 612 792" xml:space="preserve" style="width:220px;height:auto;display:block;margin:0 auto 20px;">
@@ -271,7 +381,12 @@ svg.estado-enfoque {
 </style>
 </svg>
 
-<button id="startBtn">Activar Sol</button>
+<button id="startBtn" class="icon-btn" title="Activar Sol">
+  <svg viewBox="0 0 24 24" fill="white"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/></svg>
+</button>
+<button id="stopBtn" class="icon-btn" title="Silenciar a Sol">
+  <svg viewBox="0 0 24 24" fill="white"><path d="M19 11h-2a5 5 0 0 1-8.06 3.94l1.44-1.44A3 3 0 0 0 15 11V5a3 3 0 0 0-5.7-1.3L3.51 9.49 2.1 8.08 19.9 20l-1.41 1.41-4.32-4.32A7 7 0 0 1 5 11H3a7 7 0 0 0 6 6.92V21h2v-3.08c.72-.1 1.4-.32 2-.64l1.6 1.6A9 9 0 0 1 19 11z"/></svg>
+</button>
 <div id="status">Presiona el botón para comenzar</div>
 <div id="momento"></div>
 <div id="climaDebug" style="font-size:11px;opacity:0.4;margin-top:4px;"></div>
@@ -279,17 +394,19 @@ svg.estado-enfoque {
 <div id="chatBox">
   <label>Escríbele a Sol (cualquier cosa — un pendiente, cómo va tu energía, lo que sea)</label>
   <textarea id="chatInput" placeholder="Ej: tengo que revisar el inventario de Casa Lunae el martes — o — mi energía en la tarde está como en 3"></textarea>
-  <button id="chatEnviarBtn">Enviar mensaje</button>
+  <button id="chatEnviarBtn" class="icon-send-btn" style="background:#6c5ce7;" title="Enviar mensaje">
+    <svg viewBox="0 0 24 24" fill="white"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+  </button>
 </div>
 
 <div id="maitinadaBox">
   <label>Envío directo a Maitinada (solo Evento o Colaborador — formato exacto, sin pasar por Sol)</label>
   <textarea id="textoDirecto" placeholder="Sigue el formato exacto de Maitinada Tasks Bot"></textarea>
-  <button id="enviarTextoBtn">Enviar</button>
+  <button id="enviarTextoBtn" class="icon-send-btn" title="Enviar a Maitinada">
+    <img src="data:image/png;base64,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" alt="Maitinada">
+  </button>
   <div id="maitinadaStatus" style="font-size:12px;opacity:0.8;min-height:16px;"></div>
 </div>
-
-<button id="stopBtn">Silenciar a Sol</button>
 
 <script>
 // URL real de tu Worker
@@ -403,6 +520,7 @@ function escuchar() {
   recognition.continuous = true;
   recognition.interimResults = true;
   recognitionActivo = recognition;
+  startBtn.classList.add("escuchando");
 
   let transcriptFinal = "";
   let silencioTimer = null;
@@ -446,6 +564,7 @@ function escuchar() {
   };
 
   recognition.onend = () => {
+    startBtn.classList.remove("escuchando");
     if (silencioTimer) clearTimeout(silencioTimer);
     if (topeMaximoTimer) clearTimeout(topeMaximoTimer);
     const textoCompleto = transcriptFinal.trim();
@@ -469,7 +588,7 @@ function escuchar() {
     if (silencioTimer) clearTimeout(silencioTimer);
     statusDiv.textContent = "Error escuchando: " + event.error;
     startBtn.disabled = false;
-    startBtn.textContent = "Responder";
+    startBtn.title = "Responder";
   };
 
   recognition.start();
@@ -503,7 +622,7 @@ async function enviarAClaude(texto, continuarConVoz = true) {
     console.log("Error de red al hablar con el Worker:", err);
     statusDiv.textContent = "Hubo un problema de conexión. Presiona el botón para reintentar.";
     startBtn.disabled = false;
-    startBtn.textContent = "Reintentar";
+    startBtn.title = "Reintentar";
     conversationHistory = [];
     conversacionIniciada = false;
     iniciarEscuchaWake();
@@ -514,7 +633,7 @@ async function enviarAClaude(texto, continuarConVoz = true) {
     console.log("Error del Worker:", data.error);
     statusDiv.textContent = "Error: " + data.error;
     startBtn.disabled = false;
-    startBtn.textContent = "Responder";
+    startBtn.title = "Responder";
     return;
   }
 
@@ -538,7 +657,7 @@ async function enviarAClaude(texto, continuarConVoz = true) {
       // Conversación cerrada (con o sin datos guardados) — vuelve a estado de reposo,
       // reactivando la escucha pasiva de la palabra clave "Sol"
       startBtn.disabled = false;
-      startBtn.textContent = "Nueva conversación";
+      startBtn.title = "Nueva conversación";
       conversationHistory = [];
       conversacionIniciada = false;
       iniciarEscuchaWake();
@@ -658,7 +777,7 @@ function detenerTodoPorRayo() {
   conversacionIniciada = false;
   sesionActiva = false;
   startBtn.disabled = false;
-  startBtn.textContent = "Activar Sol";
+  startBtn.title = "Activar Sol";
   statusDiv.textContent = 'Sol está en pausa. Presiona "Activar Sol" cuando quieras retomar.';
 }
 
@@ -751,7 +870,7 @@ enviarTextoBtn.addEventListener("click", async () => {
   if (!texto) return;
 
   enviarTextoBtn.disabled = true;
-  enviarTextoBtn.textContent = "Enviando...";
+  enviarTextoBtn.title = "Enviando...";
   maitinadaStatus.textContent = "";
 
   try {
@@ -776,18 +895,56 @@ enviarTextoBtn.addEventListener("click", async () => {
   }
 
   enviarTextoBtn.disabled = false;
-  enviarTextoBtn.textContent = "Enviar";
+  enviarTextoBtn.title = "Enviar a Maitinada";
 });
 
-let sesionActiva = false;
+// --- Panel lateral: rutina diaria, tareas por proyecto, carga del equipo ---
+const PANEL_URL = "https://n8n.mintamind.com/webhook/panel-estadisticas";
 
-startBtn.textContent = "Activar Sol";
+async function actualizarPanel() {
+  try {
+    const resp = await fetch(PANEL_URL);
+    const data = await resp.json();
+
+    const rutinaBarra = document.getElementById("rutinaBarra");
+    const rutinaPorcentaje = document.getElementById("rutinaPorcentaje");
+    if (rutinaBarra && data.rutinaDiaria) {
+      rutinaBarra.style.width = data.rutinaDiaria.porcentaje + "%";
+      rutinaPorcentaje.textContent = data.rutinaDiaria.porcentaje + "%";
+    }
+
+    const proyectosDiv = document.getElementById("proyectosBarras");
+    if (proyectosDiv && data.porProyecto) {
+      const maxActivas = Math.max(1, ...Object.values(data.porProyecto).map(p => p.activas));
+      proyectosDiv.innerHTML = Object.entries(data.porProyecto).map(([nombre, info]) => `
+        <div class="barra-item">
+          <div class="barra-fila"><span>${nombre}</span><span>${info.activas} activas</span></div>
+          <div class="barra-fondo"><div class="barra-relleno" style="width:${Math.round((info.activas / maxActivas) * 100)}%;"></div></div>
+        </div>
+      `).join("");
+    }
+
+    const colaboradoresDiv = document.getElementById("colaboradoresLista");
+    if (colaboradoresDiv && data.porColaboradorTotal) {
+      colaboradoresDiv.innerHTML = Object.entries(data.porColaboradorTotal)
+        .sort((a, b) => b[1] - a[1])
+        .map(([persona, cantidad]) => `<div class="colaborador-fila"><span>${persona}</span><span>${cantidad}</span></div>`)
+        .join("");
+    }
+  } catch (err) {
+    console.log("No se pudo actualizar el panel lateral:", err);
+  }
+}
+actualizarPanel();
+setInterval(actualizarPanel, 5 * 60 * 1000); // cada 5 minutos
+
+startBtn.title = "Activar Sol";
 statusDiv.textContent = 'Presiona el botón una vez para activar a Sol por hoy';
 
 startBtn.addEventListener("click", () => {
   if (!sesionActiva) {
     sesionActiva = true;
-    startBtn.textContent = "Hablar ahora";
+    startBtn.title = "Hablar ahora";
     iniciarEscuchaWake();
     return;
   }
@@ -833,6 +990,8 @@ function revisarHorarioRutinas() {
 
 setInterval(revisarHorarioRutinas, 20000); // revisa cada 20 segundos
 </script>
+
+</div>
 
 </body>
 </html>
