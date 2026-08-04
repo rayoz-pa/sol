@@ -92,19 +92,7 @@
     position: absolute;
     top: 8%;
     right: 12%;
-    width: 54px;
-    height: 54px;
-    background: #FFFADA;
-    box-shadow: 0 0 24px 6px rgba(255,250,218,0.35);
-    border-radius: 50%;
-    overflow: hidden;
-  }
-  .luna-sombra {
-    position: absolute;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background: #15111f;
+    filter: drop-shadow(0 0 12px rgba(255,250,218,0.4));
   }
   .nube {
     position: absolute;
@@ -933,14 +921,20 @@ function construirCapasFondo(categoria, momentoFondo, vientoKmh) {
 
   if (esNoche) {
     const opacidadLuna = categoria === "despejado" ? 1 : categoria === "nublado" ? 0.35 : categoria === "niebla" ? 0.2 : 0.15;
-    const luna = document.createElement("div");
-    luna.className = "luna";
-    luna.style.opacity = opacidadLuna;
-    const sombra = document.createElement("div");
-    sombra.className = "luna-sombra";
-    sombra.style.borderRadius = bordeLuna(faseLunar());
-    luna.appendChild(sombra);
-    contenedor.appendChild(luna);
+    const fase = faseLunar();
+    const r = 27;
+    const factor = fase <= 0.5 ? (fase / 0.5) : ((1 - fase) / 0.5); // 0 en luna nueva, 1 en luna llena
+    const offset = factor * 2 * r;
+    const cxSombra = fase <= 0.5 ? (50 - offset) : (50 + offset);
+    const svgNS = "http://www.w3.org/2000/svg";
+    const lunaSvg = document.createElementNS(svgNS, "svg");
+    lunaSvg.setAttribute("viewBox", "0 0 100 100");
+    lunaSvg.setAttribute("width", "54");
+    lunaSvg.setAttribute("height", "54");
+    lunaSvg.classList.add("luna");
+    lunaSvg.style.opacity = opacidadLuna;
+    lunaSvg.innerHTML = `<defs><clipPath id="clipLuna"><circle cx="50" cy="50" r="${r}"/></clipPath></defs><circle cx="50" cy="50" r="${r}" fill="#FFFADA"/><circle cx="${cxSombra}" cy="50" r="${r}" fill="#15111f" clip-path="url(#clipLuna)"/>`;
+    contenedor.appendChild(lunaSvg);
   }
 
   if (esNoche) {
