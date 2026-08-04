@@ -70,6 +70,67 @@
     font-size: 12px;
     padding: 2px 0;
   }
+  #capasFondo {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 0;
+  }
+  #panelLateral, #contenidoPrincipal { position: relative; z-index: 1; }
+  .estrella {
+    position: absolute;
+    background: #FFFADA;
+    border-radius: 50%;
+    animation: titilar 4s ease-in-out infinite;
+  }
+  @keyframes titilar {
+    0%, 100% { opacity: 0.2; }
+    50% { opacity: 0.9; }
+  }
+  .luna {
+    position: absolute;
+    top: 8%;
+    right: 12%;
+    width: 54px;
+    height: 54px;
+    background: #FFFADA;
+    box-shadow: 0 0 24px 6px rgba(255,250,218,0.35);
+    border-radius: 50%;
+    overflow: hidden;
+  }
+  .luna-sombra {
+    position: absolute;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: #15111f;
+  }
+  .nube {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(6px);
+    background: rgba(255,255,255,0.18);
+    animation-name: derivar;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+  }
+  @keyframes derivar {
+    from { transform: translateX(-20vw); }
+    to { transform: translateX(120vw); }
+  }
+  .gota {
+    position: absolute;
+    width: 1.5px;
+    background: linear-gradient(to bottom, transparent, rgba(200,220,255,0.5));
+    animation-name: caer;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+  }
+  @keyframes caer {
+    from { transform: translateY(-10vh); }
+    to { transform: translateY(110vh); }
+  }
   body.despejado-noche-fria { background: linear-gradient(160deg, #0e0549 0%, #4a62b6 65%, #212221 100%); }
   body.despejado-noche-calida { background: linear-gradient(160deg, #21174B 0%, #CC54D0 65%, #4A42AE 100%); }
   body.despejado-dia-fria { background: linear-gradient(160deg, #4a6fa5 0%, #a8c8e8 65%, #2a4570 100%); }
@@ -178,6 +239,8 @@
 </style>
 </head>
 <body>
+
+<div id="capasFondo"></div>
 
 <div id="panelLateral">
   <div>
@@ -802,11 +865,12 @@ function esTemporadaCalida() {
 async function actualizarFondoClima() {
   const climaDebugDiv = document.getElementById("climaDebug");
   try {
-    const url = "https://api.open-meteo.com/v1/forecast?latitude=-33.7333&longitude=-70.75&current=weathercode,is_day&daily=sunset&timezone=America%2FSantiago";
+    const url = "https://api.open-meteo.com/v1/forecast?latitude=-33.7333&longitude=-70.75&current=weathercode,is_day,wind_speed_10m&daily=sunset&timezone=America%2FSantiago";
     const resp = await fetch(url);
     const data = await resp.json();
     const codigo = data.current?.weathercode ?? 0;
     const esDia = data.current?.is_day === 1;
+    const vientoKmh = data.current?.wind_speed_10m ?? 10;
     const sunsetStr = data.daily?.sunset?.[0];
 
     let categoria;
@@ -833,9 +897,92 @@ async function actualizarFondoClima() {
       .join(" ")
       .trim();
     if (climaDebugDiv) climaDebugDiv.textContent = `Fondo: ${clase}`;
+
+    construirCapasFondo(categoria, momentoFondo, vientoKmh);
   } catch (err) {
     console.log("No se pudo actualizar el fondo por clima:", err);
     if (climaDebugDiv) climaDebugDiv.textContent = "Clima: no disponible (" + err.message + ")";
+  }
+}
+
+// --- Fase lunar, calculada localmente, sin depender de ninguna API ---
+function faseLunar() {
+  const sinodico = 29.530588853;
+  const conocida = Date.UTC(2000, 0, 6, 18, 14);
+  const dias = (Date.now() - conocida) / 86400000;
+  return (((dias % sinodico) + sinodico) % sinodico) / sinodico; // 0 = nueva, 0.5 = llena
+}
+
+function bordeLuna(fase) {
+  if (fase <= 0.5) {
+    const pct = Math.round((0.5 - fase) / 0.5 * 100);
+    return `50% ${pct}% ${pct}% 50% / 50% 50% 50% 50%`;
+  }
+  const pct = Math.round((fase - 0.5) / 0.5 * 100);
+  return `${pct}% 50% 50% ${pct}% / 50% 50% 50% 50%`;
+}
+
+// --- Construye estrellas, luna, nubes y lluvia según clima/momento real ---
+function construirCapasFondo(categoria, momentoFondo, vientoKmh) {
+  const contenedor = document.getElementById("capasFondo");
+  if (!contenedor) return;
+  contenedor.innerHTML = "";
+
+  const esNoche = momentoFondo === "noche";
+  const esAtardecer = momentoFondo === "atardecer";
+
+  if (esNoche) {
+    const opacidadLuna = categoria === "despejado" ? 1 : categoria === "nublado" ? 0.35 : categoria === "niebla" ? 0.2 : 0.15;
+    const luna = document.createElement("div");
+    luna.className = "luna";
+    luna.style.opacity = opacidadLuna;
+    const sombra = document.createElement("div");
+    sombra.className = "luna-sombra";
+    sombra.style.borderRadius = bordeLuna(faseLunar());
+    luna.appendChild(sombra);
+    contenedor.appendChild(luna);
+  }
+
+  if (esNoche) {
+    const cantidad = categoria === "despejado" ? 45 : categoria === "nublado" ? 15 : categoria === "niebla" ? 4 : 0;
+    for (let i = 0; i < cantidad; i++) {
+      const estrella = document.createElement("div");
+      estrella.className = "estrella";
+      const tam = 1 + Math.random() * 1.8;
+      estrella.style.width = tam + "px";
+      estrella.style.height = tam + "px";
+      estrella.style.top = Math.random() * 70 + "%";
+      estrella.style.left = Math.random() * 100 + "%";
+      estrella.style.animationDelay = (Math.random() * 4) + "s";
+      contenedor.appendChild(estrella);
+    }
+  }
+
+  const nubesCantidad = { despejado: esAtardecer ? 1 : 0, nublado: 5, niebla: 6, lluvia: 5 }[categoria] ?? 0;
+  const duracionBase = Math.max(18, 70 - vientoKmh * 1.4); // más viento real = nubes más rápidas
+  for (let i = 0; i < nubesCantidad; i++) {
+    const nube = document.createElement("div");
+    nube.className = "nube";
+    const ancho = 120 + Math.random() * 160;
+    nube.style.width = ancho + "px";
+    nube.style.height = ancho * 0.4 + "px";
+    nube.style.top = (5 + Math.random() * 40) + "%";
+    nube.style.opacity = categoria === "niebla" ? 0.35 : 0.5;
+    nube.style.animationDuration = (duracionBase + Math.random() * 15) + "s";
+    nube.style.animationDelay = "-" + (Math.random() * duracionBase) + "s";
+    contenedor.appendChild(nube);
+  }
+
+  if (categoria === "lluvia") {
+    for (let i = 0; i < 60; i++) {
+      const gota = document.createElement("div");
+      gota.className = "gota";
+      gota.style.left = Math.random() * 100 + "%";
+      gota.style.height = (12 + Math.random() * 14) + "px";
+      gota.style.animationDuration = (0.5 + Math.random() * 0.4) + "s";
+      gota.style.animationDelay = "-" + (Math.random() * 1) + "s";
+      contenedor.appendChild(gota);
+    }
   }
 }
 actualizarFondoClima();
