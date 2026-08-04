@@ -2,23 +2,92 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Prueba de fondo — Atardecer despejado</title>
+<title>Asistente de Voz - Rayo</title>
 <style>
   body {
-    margin: 0;
-    min-height: 100vh;
+    font-family: -apple-system, sans-serif;
+    background: #1a1a2e;
+    color: #eaeaea;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    background-image: url('atardecer-despejado.svg');
-    background-size: cover;
-    background-position: center;
-    font-family: -apple-system, sans-serif;
-    color: #eaeaea;
+    min-height: 100vh;
+    margin: 0;
+    transition: background 3s ease;
   }
+  body.despejado-noche-fria { background: linear-gradient(160deg, #0e0549 0%, #4a62b6 65%, #212221 100%); }
+  body.despejado-noche-calida { background: linear-gradient(160deg, #21174B 0%, #CC54D0 65%, #4A42AE 100%); }
+  body.despejado-dia-fria { background: linear-gradient(160deg, #4a6fa5 0%, #a8c8e8 65%, #2a4570 100%); }
+  body.despejado-dia-calida { background: linear-gradient(160deg, #e8a052 0%, #f7d9a0 65%, #c96b3a 100%); }
+  body.despejado-atardecer { background: linear-gradient(160deg, #e8763f 0%, #e8709f 65%, #CC2D8F 100%); }
+  body.nublado-noche { background: linear-gradient(160deg, #0e0549 0%, #4a4a5e 65%, #212221 100%); }
+  body.nublado-dia { background: linear-gradient(160deg, #7a8494 0%, #b0b8c4 65%, #565f6e 100%); }
+  body.nublado-atardecer { background: linear-gradient(160deg, #b87a6b 0%, #d9b8ae 65%, #6b5560 100%); }
+  body.niebla-noche { background: linear-gradient(160deg, #15111f 0%, #6b5f7a 65%, #221c30 100%); }
+  body.niebla-dia { background: linear-gradient(160deg, #8f7f9a 0%, #e0d5e5 65%, #5a4f65 100%); }
+  body.niebla-atardecer { background: linear-gradient(160deg, #c9a89a 0%, #e8d4c8 65%, #8a7568 100%); }
+  body.lluvia-noche-fria { background: linear-gradient(160deg, #0a1f2e 0%, #1c4a5e 65%, #0f1a20 100%); }
+  body.lluvia-noche-calida { background: linear-gradient(160deg, #241a3a 0%, #7a5566 65%, #2e2444 100%); }
+  body.lluvia-dia-fria { background: linear-gradient(160deg, #4a5a6b 0%, #8aa0b0 65%, #2e3a45 100%); }
+  body.lluvia-dia-calida { background: linear-gradient(160deg, #6b5a5f 0%, #a08a8f 65%, #4a3f45 100%); }
+  body.lluvia-atardecer { background: linear-gradient(160deg, #8f5a5f 0%, #c99a8a 65%, #4a3540 100%); }
+  #chatBox, #maitinadaBox {
+    margin-top: 24px;
+    width: 90%;
+    max-width: 500px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  #chatBox label, #maitinadaBox label {
+    font-size: 12px;
+    opacity: 0.7;
+  }
+  #chatBox textarea, #maitinadaBox textarea {
+    width: 100%;
+    min-height: 80px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 12px;
+    color: #eaeaea;
+    padding: 12px;
+    font-size: 14px;
+    box-sizing: border-box;
+    resize: vertical;
+  }
+  #chatBox button, #maitinadaBox button {
+    padding: 10px 20px;
+    font-size: 14px;
+    align-self: flex-end;
+  }
+  #maitinadaBox {
+    margin-top: 30px;
+    opacity: 0.75;
+  }
+  #stopBtn {
+    background: #333;
+    padding: 8px 18px;
+    font-size: 12px;
+    opacity: 0.6;
+    margin-top: 30px;
+  }
+  button {
+    background: #6c5ce7;
+    color: white;
+    border: none;
+    padding: 24px 48px;
+    font-size: 20px;
+    border-radius: 50px;
+    cursor: pointer;
+  }
+  button:disabled { background: #444; }
+  #status { margin-top: 30px; font-size: 16px; opacity: 0.8; max-width: 500px; text-align: center; }
+  #momento { margin-top: 10px; font-size: 13px; opacity: 0.5; text-transform: uppercase; letter-spacing: 1px; }
 </style>
 </head>
 <body>
+
 <svg id="sol-character" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
 	 viewBox="0 0 612 792" enable-background="new 0 0 612 792" xml:space="preserve" style="width:220px;height:auto;display:block;margin:0 auto 20px;">
 <g id="sol-breathe">
@@ -201,4 +270,569 @@ svg.estado-enfoque {
 }
 </style>
 </svg>
-</body></html>
+
+<button id="startBtn">Activar Sol</button>
+<div id="status">Presiona el botón para comenzar</div>
+<div id="momento"></div>
+<div id="climaDebug" style="font-size:11px;opacity:0.4;margin-top:4px;"></div>
+
+<div id="chatBox">
+  <label>Escríbele a Sol (cualquier cosa — un pendiente, cómo va tu energía, lo que sea)</label>
+  <textarea id="chatInput" placeholder="Ej: tengo que revisar el inventario de Casa Lunae el martes — o — mi energía en la tarde está como en 3"></textarea>
+  <button id="chatEnviarBtn">Enviar mensaje</button>
+</div>
+
+<div id="maitinadaBox">
+  <label>Envío directo a Maitinada (solo Evento o Colaborador — formato exacto, sin pasar por Sol)</label>
+  <textarea id="textoDirecto" placeholder="Sigue el formato exacto de Maitinada Tasks Bot"></textarea>
+  <button id="enviarTextoBtn">Enviar</button>
+  <div id="maitinadaStatus" style="font-size:12px;opacity:0.8;min-height:16px;"></div>
+</div>
+
+<button id="stopBtn">Silenciar a Sol</button>
+
+<script>
+// URL real de tu Worker
+const WORKER_URL = "https://bitter-boat-7e89.rayo-pizarroa.workers.dev/";
+
+// La clave ya NO vive escrita en el código.
+// Se pide una sola vez (por navegador/dispositivo) y queda guardada en localStorage.
+// Debe coincidir con el secreto CLAVE_COMPARTIDA que configuraste en Cloudflare
+// (wrangler secret put CLAVE_COMPARTIDA).
+function obtenerClave() {
+  let clave = localStorage.getItem("rayo_clave_acceso");
+  if (!clave) {
+    clave = prompt("Ingresa tu clave de acceso (solo se pide una vez en este navegador):");
+    if (clave) {
+      clave = clave.trim();
+      localStorage.setItem("rayo_clave_acceso", clave);
+    }
+  }
+  return clave;
+}
+const CLAVE_COMPARTIDA = obtenerClave();
+
+// Voz fija elegida: Google español
+const NOMBRE_VOZ = "Google español";
+let vozSeleccionada = null;
+
+function cargarVoz() {
+  const voces = speechSynthesis.getVoices();
+  vozSeleccionada = voces.find(v => v.name === NOMBRE_VOZ) || null;
+}
+speechSynthesis.onvoiceschanged = cargarVoz;
+cargarVoz();
+
+const startBtn = document.getElementById("startBtn");
+const stopBtn = document.getElementById("stopBtn");
+const statusDiv = document.getElementById("status");
+const momentoDiv = document.getElementById("momento");
+const solCharacter = document.getElementById("sol-character");
+let recognitionActivo = null; // referencia al reconocimiento en curso (conversación activa), para poder detenerlo desde fuera
+
+// Cambia el color de Sol según estado emocional. Estados válidos:
+// "" (alegría/base), "estado-calma", "estado-enojo", "estado-miedo",
+// "estado-esperanza", "estado-motivacion", "estado-inspiracion", "estado-enfoque"
+// Aún no está conectada a la detección real de ánimo del Worker — queda lista para cuando se construya esa pieza.
+function actualizarEstadoSol(estado) {
+  if (!solCharacter) return;
+  solCharacter.setAttribute("class", estado || "");
+}
+
+let conversationHistory = [];
+let conversacionIniciada = false;
+
+function detectarMomento() {
+  const hora = new Date().getHours();
+  if (hora >= 6 && hora < 13) return "manana";
+  if (hora >= 13 && hora < 20) return "mediodia";
+  return "cierre";
+}
+
+let momento = detectarMomento();
+const saludosPorMomento = {
+  manana: "Buen día, Rayo.",
+  mediodia: "Hola Rayo, ¿cómo va tu día?",
+  cierre: "Hola Rayo, ¿cómo terminas el día?",
+};
+
+momentoDiv.textContent = "Momento: " + momento;
+
+function hablar(texto, callback) {
+  const utterance = new SpeechSynthesisUtterance(texto);
+  if (vozSeleccionada) {
+    utterance.voice = vozSeleccionada;
+    utterance.lang = vozSeleccionada.lang;
+  } else {
+    utterance.lang = "es-ES";
+  }
+  utterance.onend = callback;
+  speechSynthesis.speak(utterance);
+}
+
+function separarRespuesta(textoCompleto) {
+  const marcador = "DATOS_JSON:";
+  const idx = textoCompleto.indexOf(marcador);
+  if (idx === -1) {
+    return { textoHablado: textoCompleto, datosJson: null };
+  }
+  const textoHablado = textoCompleto.slice(0, idx).trim();
+  const jsonTexto = textoCompleto.slice(idx + marcador.length).trim();
+  let datosJson = null;
+  try {
+    datosJson = JSON.parse(jsonTexto);
+  } catch (e) {
+    console.log("No se pudo parsear DATOS_JSON:", jsonTexto);
+  }
+  return { textoHablado, datosJson };
+}
+
+// Detección flexible: basta con decir "sol" junto con cualquier raíz de detención,
+// sin importar la conjugación exacta (detente, detenerte, deténte, etc.)
+const RAICES_DETENER = ["deten", "pausa", "desactiv", "silencio", "deja de escuchar"];
+
+function esFraseDeDetencion(textoLower) {
+  const contieneSol = textoLower.includes("sol");
+  const contieneRaizDeDetencion = RAICES_DETENER.some(raiz => textoLower.includes(raiz));
+  return contieneSol && contieneRaizDeDetencion;
+}
+
+function escuchar() {
+  const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+  recognition.lang = "es-ES";
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognitionActivo = recognition;
+
+  let transcriptFinal = "";
+  let silencioTimer = null;
+  let topeMaximoTimer = null;
+  let ultimaLongitudTexto = 0;
+  const TIEMPO_SILENCIO_MS = 1600; // punto medio entre 2000ms (muy lento) y 1200ms (cortaba de más) — ajustar de nuevo si sigue sin sentirse bien
+  const TOPE_MAXIMO_MS = 15000; // red de seguridad: nunca escucha más de 15s seguidos, pase lo que pase
+
+  statusDiv.textContent = "Escuchando...";
+
+  function reiniciarTimerSilencio() {
+    if (silencioTimer) clearTimeout(silencioTimer);
+    silencioTimer = setTimeout(() => {
+      recognition.stop();
+    }, TIEMPO_SILENCIO_MS);
+  }
+
+  topeMaximoTimer = setTimeout(() => {
+    recognition.stop();
+  }, TOPE_MAXIMO_MS);
+
+  recognition.onresult = (event) => {
+    let interim = "";
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const texto = event.results[i][0].transcript;
+      if (event.results[i].isFinal) {
+        transcriptFinal += texto + " ";
+      } else {
+        interim += texto;
+      }
+    }
+    const textoActual = (transcriptFinal + interim).trim();
+    statusDiv.textContent = 'Escuchando: "' + textoActual + '"';
+
+    // Solo reinicia el temporizador si de verdad llegó contenido nuevo,
+    // no ante cualquier evento vacío o repetido que mande el navegador.
+    if (textoActual.length > ultimaLongitudTexto) {
+      ultimaLongitudTexto = textoActual.length;
+      reiniciarTimerSilencio();
+    }
+  };
+
+  recognition.onend = () => {
+    if (silencioTimer) clearTimeout(silencioTimer);
+    if (topeMaximoTimer) clearTimeout(topeMaximoTimer);
+    const textoCompleto = transcriptFinal.trim();
+    const textoNormalizado = textoCompleto.toLowerCase();
+
+    if (esFraseDeDetencion(textoNormalizado)) {
+      detenerTodoPorRayo();
+      return; // corta el ciclo sin llamar a Claude
+    }
+
+    if (textoCompleto) {
+      statusDiv.textContent = 'Dijiste: "' + textoCompleto + '"';
+      enviarAClaude(textoCompleto);
+    } else {
+      // No se detectó nada útil, sigue escuchando sin pedir clic
+      escuchar();
+    }
+  };
+
+  recognition.onerror = (event) => {
+    if (silencioTimer) clearTimeout(silencioTimer);
+    statusDiv.textContent = "Error escuchando: " + event.error;
+    startBtn.disabled = false;
+    startBtn.textContent = "Responder";
+  };
+
+  recognition.start();
+  reiniciarTimerSilencio();
+}
+
+async function enviarAClaude(texto, continuarConVoz = true) {
+  statusDiv.textContent = "Pensando...";
+
+  let data;
+  try {
+    const response = await fetch(WORKER_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Rayo-Key": CLAVE_COMPARTIDA,
+      },
+      body: JSON.stringify({
+        userText: texto,
+        conversationHistory: conversationHistory,
+        momento: momento,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error("El servidor respondió con estado " + response.status);
+    }
+
+    data = await response.json();
+  } catch (err) {
+    console.log("Error de red al hablar con el Worker:", err);
+    statusDiv.textContent = "Hubo un problema de conexión. Presiona el botón para reintentar.";
+    startBtn.disabled = false;
+    startBtn.textContent = "Reintentar";
+    conversationHistory = [];
+    conversacionIniciada = false;
+    iniciarEscuchaWake();
+    return;
+  }
+
+  if (data.error) {
+    console.log("Error del Worker:", data.error);
+    statusDiv.textContent = "Error: " + data.error;
+    startBtn.disabled = false;
+    startBtn.textContent = "Responder";
+    return;
+  }
+
+  const { textoHablado, datosJson } = separarRespuesta(data.reply);
+
+  if (data.cambiarMomentoA) {
+    momento = data.cambiarMomentoA;
+    momentoDiv.textContent = "Momento: " + momento;
+  }
+
+  conversationHistory = data.messages;
+  conversationHistory.push({ role: "assistant", content: data.reply });
+
+  if (data.conversacionTerminada) {
+    console.log("Conversación cerrada. Guardado en Notion:", data.guardadoEnNotion);
+  }
+
+  statusDiv.textContent = textoHablado;
+  hablar(textoHablado, () => {
+    if (data.conversacionTerminada) {
+      // Conversación cerrada (con o sin datos guardados) — vuelve a estado de reposo,
+      // reactivando la escucha pasiva de la palabra clave "Sol"
+      startBtn.disabled = false;
+      startBtn.textContent = "Nueva conversación";
+      conversationHistory = [];
+      conversacionIniciada = false;
+      iniciarEscuchaWake();
+    } else {
+      // Conversación sigue — si vino por voz, sigue escuchando sola.
+      // Si vino escrita, espera el próximo mensaje escrito en vez de activar el micrófono.
+      if (continuarConVoz) {
+        escuchar();
+      } else {
+        statusDiv.textContent = textoHablado + " (escribe tu respuesta abajo)";
+      }
+    }
+  });
+}
+
+let wakeRecognition = null;
+let escuchandoWake = false;
+
+function iniciarEscuchaWake() {
+  if (escuchandoWake || conversacionIniciada) return;
+  wakeRecognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+  wakeRecognition.lang = "es-ES";
+  wakeRecognition.continuous = true;
+  wakeRecognition.interimResults = true; // para diagnosticar y reaccionar más rápido
+  escuchandoWake = true;
+
+  wakeRecognition.onresult = (event) => {
+    if (conversacionIniciada) return; // ya se disparó una conversación, ignora eventos adicionales de esta misma frase
+
+    let textoCompleto = "";
+    for (let i = 0; i < event.results.length; i++) {
+      textoCompleto += event.results[i][0].transcript + " ";
+    }
+    const textoLower = textoCompleto.toLowerCase();
+    statusDiv.textContent = 'Escuchando fondo: "' + textoCompleto.trim() + '"';
+
+    if (esFraseDeDetencion(textoLower)) {
+      detenerTodoPorRayo();
+      return;
+    }
+
+    if (textoLower.includes("sol")) {
+      detenerEscuchaWake();
+      iniciarConversacion("wake");
+    }
+  };
+
+  wakeRecognition.onend = () => {
+    escuchandoWake = false;
+    // Se reinicia sola mientras no haya conversación activa, para seguir atenta a la palabra clave
+    if (!conversacionIniciada) {
+      iniciarEscuchaWake();
+    }
+  };
+
+  wakeRecognition.onerror = (event) => {
+    escuchandoWake = false;
+    console.log("Error en escucha pasiva:", event.error);
+    if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+      statusDiv.textContent = "Necesito permiso de micrófono para escuchar 'Sol'. Revisa el ícono de micrófono en la barra de direcciones.";
+      return; // no reintentar si el problema es de permisos
+    }
+    if (event.error !== "no-speech" && event.error !== "aborted") {
+      // Muestra brevemente cualquier error inesperado antes de reintentar
+      statusDiv.textContent = "Error de escucha (" + event.error + "), reintentando...";
+    }
+    // Errores comunes y esperables (ej. "no-speech" tras un rato de silencio) —
+    // simplemente reiniciamos la escucha, sin interrumpir nada.
+    if (!conversacionIniciada) {
+      iniciarEscuchaWake();
+    }
+  };
+
+  wakeRecognition.start();
+  statusDiv.textContent = "Di \"Sol\" cuando quieras hablar conmigo.";
+}
+
+function detenerEscuchaWake() {
+  if (wakeRecognition) {
+    wakeRecognition.onend = null; // evita que se reinicie sola al detenerla a propósito
+    wakeRecognition.stop();
+  }
+  escuchandoWake = false;
+}
+
+function yaSaludoHoy() {
+  const hoy = new Date().toLocaleDateString("en-CA");
+  return localStorage.getItem("rayo_saludo_fecha") === hoy;
+}
+function marcarSaludoHoy() {
+  const hoy = new Date().toLocaleDateString("en-CA");
+  localStorage.setItem("rayo_saludo_fecha", hoy);
+}
+
+function iniciarConversacion(origen) {
+  if (conversacionIniciada) return; // ya hay una conversación en curso, ignora disparos duplicados
+  startBtn.disabled = true;
+  conversacionIniciada = true;
+  statusDiv.textContent = "Conectando...";
+  const yaSaludado = yaSaludoHoy();
+  const tipo = origen === "rutina" ? "rutina programada" : "palabra clave";
+  const disparador = `(inicio por ${tipo}, ${yaSaludado ? "ya conversamos hoy" : "primera vez hoy"})`;
+  marcarSaludoHoy();
+  enviarAClaude(disparador);
+}
+
+function detenerTodoPorRayo() {
+  if (recognitionActivo) {
+    recognitionActivo.onend = null;
+    recognitionActivo.onresult = null;
+    try { recognitionActivo.abort(); } catch (e) {}
+    recognitionActivo = null;
+  }
+  detenerEscuchaWake();
+  speechSynthesis.cancel();
+  conversationHistory = [];
+  conversacionIniciada = false;
+  sesionActiva = false;
+  startBtn.disabled = false;
+  startBtn.textContent = "Activar Sol";
+  statusDiv.textContent = 'Sol está en pausa. Presiona "Activar Sol" cuando quieras retomar.';
+}
+
+stopBtn.addEventListener("click", detenerTodoPorRayo);
+
+// --- Fondo dinámico según clima real de Buin + hora del día ---
+// --- Fondo dinámico: clima real de Buin + momento del día + temporada — todo con CSS, sin imágenes ---
+const FONDO_CLASES = [
+  "despejado-noche-fria", "despejado-noche-calida", "despejado-dia-fria", "despejado-dia-calida", "despejado-atardecer",
+  "nublado-noche", "nublado-dia", "nublado-atardecer",
+  "niebla-noche", "niebla-dia", "niebla-atardecer",
+  "lluvia-noche-fria", "lluvia-noche-calida", "lluvia-dia-fria", "lluvia-dia-calida", "lluvia-atardecer",
+];
+
+function esTemporadaCalida() {
+  // Hemisferio sur: verano + inicio de otoño (dic, ene, feb, mar) = cálida
+  const mes = new Date().getMonth() + 1;
+  return [12, 1, 2, 3].includes(mes);
+}
+
+async function actualizarFondoClima() {
+  const climaDebugDiv = document.getElementById("climaDebug");
+  try {
+    const url = "https://api.open-meteo.com/v1/forecast?latitude=-33.7333&longitude=-70.75&current=weathercode,is_day&daily=sunset&timezone=America%2FSantiago";
+    const resp = await fetch(url);
+    const data = await resp.json();
+    const codigo = data.current?.weathercode ?? 0;
+    const esDia = data.current?.is_day === 1;
+    const sunsetStr = data.daily?.sunset?.[0];
+
+    let categoria;
+    if (codigo <= 1) categoria = "despejado";
+    else if (codigo <= 3) categoria = "nublado";
+    else if (codigo <= 48) categoria = "niebla";
+    else categoria = "lluvia";
+
+    let momentoFondo = esDia ? "dia" : "noche";
+    if (sunsetStr) {
+      const diferenciaMin = Math.abs(new Date() - new Date(sunsetStr)) / 60000;
+      if (diferenciaMin <= 40) momentoFondo = "atardecer"; // ventana real alrededor de la puesta de sol de hoy
+    }
+
+    let clase = categoria + "-" + momentoFondo;
+    if (momentoFondo !== "atardecer" && (categoria === "despejado" || categoria === "lluvia")) {
+      clase += esTemporadaCalida() ? "-calida" : "-fria";
+    }
+
+    document.body.className = document.body.className
+      .split(" ")
+      .filter(c => !FONDO_CLASES.includes(c))
+      .concat(clase)
+      .join(" ")
+      .trim();
+    if (climaDebugDiv) climaDebugDiv.textContent = `Fondo: ${clase}`;
+  } catch (err) {
+    console.log("No se pudo actualizar el fondo por clima:", err);
+    if (climaDebugDiv) climaDebugDiv.textContent = "Clima: no disponible (" + err.message + ")";
+  }
+}
+actualizarFondoClima();
+setInterval(actualizarFondoClima, 20 * 60 * 1000); // cada 20 minutos
+
+// --- "Escríbele a Sol" — texto libre, misma conversación que la voz ---
+const chatInput = document.getElementById("chatInput");
+const chatEnviarBtn = document.getElementById("chatEnviarBtn");
+
+chatEnviarBtn.addEventListener("click", async () => {
+  const texto = chatInput.value.trim();
+  if (!texto) return;
+  chatInput.value = "";
+  chatEnviarBtn.disabled = true;
+  await enviarAClaude(texto, false); // false = no activar el micrófono al terminar, esperar texto de nuevo
+  chatEnviarBtn.disabled = false;
+});
+
+chatInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    chatEnviarBtn.click();
+  }
+});
+
+// --- Envío directo a Maitinada (solo Evento/Colaborador — formato exacto, sin Claude) ---
+const textoDirectoInput = document.getElementById("textoDirecto");
+const enviarTextoBtn = document.getElementById("enviarTextoBtn");
+const maitinadaStatus = document.getElementById("maitinadaStatus");
+
+enviarTextoBtn.addEventListener("click", async () => {
+  const texto = textoDirectoInput.value.trim();
+  if (!texto) return;
+
+  enviarTextoBtn.disabled = true;
+  enviarTextoBtn.textContent = "Enviando...";
+  maitinadaStatus.textContent = "";
+
+  try {
+    const response = await fetch(WORKER_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Rayo-Key": CLAVE_COMPARTIDA,
+      },
+      body: JSON.stringify({ textoDirecto: texto }),
+    });
+    const data = await response.json();
+    if (data.enviado) {
+      textoDirectoInput.value = "";
+      maitinadaStatus.textContent = "✅ Recibido por Maitinada — revisa Notion o Telegram en un momento para confirmar que se registró bien (esto solo confirma que llegó, no que Maitinada terminó de procesarlo).";
+    } else {
+      maitinadaStatus.textContent = "❌ No llegó — reintenta. Error: " + (data.error || "desconocido");
+    }
+  } catch (err) {
+    console.log("Error enviando texto directo:", err);
+    maitinadaStatus.textContent = "❌ Error de conexión — reintenta.";
+  }
+
+  enviarTextoBtn.disabled = false;
+  enviarTextoBtn.textContent = "Enviar";
+});
+
+let sesionActiva = false;
+
+startBtn.textContent = "Activar Sol";
+statusDiv.textContent = 'Presiona el botón una vez para activar a Sol por hoy';
+
+startBtn.addEventListener("click", () => {
+  if (!sesionActiva) {
+    sesionActiva = true;
+    startBtn.textContent = "Hablar ahora";
+    iniciarEscuchaWake();
+    return;
+  }
+  if (!conversacionIniciada) {
+    detenerEscuchaWake();
+    iniciarConversacion("wake");
+  } else {
+    startBtn.disabled = true;
+    escuchar();
+  }
+});
+
+// --- Scheduler interno de rutinas ---
+// Como la página se deja abierta todo el día, no hace falta reabrir Chrome
+// a cada horario — solo revisamos el reloj y disparamos la conversación sola.
+const HORARIOS_RUTINA = [
+  { hora: 9, minuto: 45, momento: "manana" },
+  { hora: 14, minuto: 0, momento: "mediodia" },
+  { hora: 22, minuto: 0, momento: "cierre" },
+];
+let ultimaRutinaDisparada = null; // ej. "2026-08-02_manana", evita disparar dos veces el mismo momento el mismo día
+
+function revisarHorarioRutinas() {
+  if (conversacionIniciada) return; // no interrumpir si ya hay una conversación en curso
+
+  const ahora = new Date();
+  const fechaHoy = ahora.toLocaleDateString("en-CA");
+
+  for (const r of HORARIOS_RUTINA) {
+    if (ahora.getHours() === r.hora && ahora.getMinutes() === r.minuto) {
+      const clave = `${fechaHoy}_${r.momento}`;
+      if (ultimaRutinaDisparada === clave) continue; // ya se disparó este momento hoy
+
+      ultimaRutinaDisparada = clave;
+      momento = r.momento;
+      momentoDiv.textContent = "Momento: " + momento;
+      detenerEscuchaWake();
+      iniciarConversacion("rutina");
+      break;
+    }
+  }
+}
+
+setInterval(revisarHorarioRutinas, 20000); // revisa cada 20 segundos
+</script>
+
+</body>
+</html>
