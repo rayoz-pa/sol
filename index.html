@@ -90,36 +90,40 @@
   }
   .luna {
     position: absolute;
-    top: 8%;
-    right: 12%;
+    top: 4%;
+    right: 16%;
+    width: 123px;
+    height: 123px;
     filter: drop-shadow(0 0 24px rgba(255,250,218,0.7));
   }
-  .luna-info {
+  .luna-clima {
     position: absolute;
-    top: calc(8% + 100px);
-    right: 12%;
-    width: 96px;
-    text-align: center;
+    top: calc(4% + 24px);
+    right: calc(16% - 123px - 14px);
+    width: 76px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
     color: #FFFADA;
-    font-size: 11px;
-    opacity: 0.9;
     text-shadow: 0 0 6px rgba(255,250,218,0.5);
   }
   .luna-signo {
+    position: absolute;
+    top: calc(4% + 123px + 8px);
+    right: 16%;
+    width: 123px;
+    text-align: center;
+    color: #FFFADA;
+    font-size: 12px;
     font-weight: 600;
-    margin-bottom: 4px;
     letter-spacing: 0.03em;
-  }
-  .luna-pronostico {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
+    text-shadow: 0 0 6px rgba(255,250,218,0.5);
   }
   .dia-pronostico {
     display: flex;
     justify-content: space-between;
     font-size: 10px;
-    opacity: 0.75;
+    opacity: 0.8;
   }
   .nube {
     position: absolute;
@@ -1004,20 +1008,24 @@ function construirCapasFondo(categoria, momentoFondo, vientoKmh, pronostico3dias
     const svgNS = "http://www.w3.org/2000/svg";
     const lunaSvg = document.createElementNS(svgNS, "svg");
     lunaSvg.setAttribute("viewBox", "0 0 100 100");
-    lunaSvg.setAttribute("width", "88");
-    lunaSvg.setAttribute("height", "88");
+    lunaSvg.setAttribute("width", "123");
+    lunaSvg.setAttribute("height", "123");
     lunaSvg.classList.add("luna");
     lunaSvg.style.opacity = opacidadLuna;
-    lunaSvg.innerHTML = `<defs><clipPath id="clipLuna"><circle cx="50" cy="50" r="${r}"/></clipPath></defs><circle cx="50" cy="50" r="${r}" fill="#FFFADA"/><circle cx="${cxSombra}" cy="50" r="${r}" fill="#15111f" clip-path="url(#clipLuna)"/>`;
+    lunaSvg.innerHTML = `<defs><clipPath id="clipLuna"><circle cx="50" cy="50" r="${r}"/></clipPath></defs><circle cx="50" cy="50" r="${r}" fill="#FFFADA"/><g clip-path="url(#clipLuna)"><circle cx="40" cy="38" r="5" fill="#D8CF9A" opacity="0.45"/><circle cx="61" cy="53" r="7" fill="#D8CF9A" opacity="0.35"/><circle cx="46" cy="65" r="3.5" fill="#D8CF9A" opacity="0.4"/><circle cx="65" cy="35" r="3" fill="#D8CF9A" opacity="0.35"/></g><circle cx="${cxSombra}" cy="50" r="${r}" fill="#15111f" clip-path="url(#clipLuna)"/>`;
     contenedor.appendChild(lunaSvg);
 
-    const infoDiv = document.createElement("div");
-    infoDiv.className = "luna-info";
-    const filasPronostico = (pronostico3dias || []).map(d => `
+    const signoDiv = document.createElement("div");
+    signoDiv.className = "luna-signo";
+    signoDiv.textContent = signoLunar();
+    contenedor.appendChild(signoDiv);
+
+    const climaDiv = document.createElement("div");
+    climaDiv.className = "luna-clima";
+    climaDiv.innerHTML = (pronostico3dias || []).map(d => `
       <div class="dia-pronostico"><span>${diaCorto(d.fecha)}</span><span>${d.icono}</span><span>${d.max}°/${d.min}°</span></div>
     `).join("");
-    infoDiv.innerHTML = `<div class="luna-signo">${signoLunar()}</div><div class="luna-pronostico">${filasPronostico}</div>`;
-    contenedor.appendChild(infoDiv);
+    contenedor.appendChild(climaDiv);
   }
 
   if (esNoche) {
